@@ -277,3 +277,19 @@ ALTER TABLE inventario AUTO_INCREMENT = ID_ELIMINADA;
 ```
 
 Este procedimiento es opcional y se utiliza únicamente con fines de organización visual de los registros.
+
+Aporte de los Integrantes
+Martín Troncoso
+Desarrollo de microservicios.
+Configuración de API Gateway.
+Integración Docker y Docker Compose.
+Documentación y pruebas.
+Jürgen Bormuth
+Desarrollo de funcionalidades de negocio.
+Implementación de endpoints REST.
+Maximiliano Díaz
+Apoyo en desarrollo y validación de funcionalidades.
+Pruebas y revisión de integración.
+Maximiliano Cifuentes
+Apoyo en documentación, pruebas y validación del sistema.
+Verificación de funcionamiento general.
