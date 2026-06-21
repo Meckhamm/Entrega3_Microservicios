@@ -1,0 +1,89 @@
+services:
+  mysql-productos:
+    image: mysql:8.0
+    container_name: mysql-productos
+    restart: always
+    ports:
+      - "3308:3306"
+    environment:
+      MYSQL_DATABASE: productos_db
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - mysql_productos_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  mysql-inventario:
+    image: mysql:8.0
+    container_name: mysql-inventario
+    restart: always
+    ports:
+      - "3309:3306"
+    environment:
+      MYSQL_DATABASE: inventario_db
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - mysql_inventario_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  producto-service:
+    build:
+      context: ./ProyectoMicroservicios/Producto
+      dockerfile: Dockerfile
+    container_name: producto-service
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-productos:3306/productos_db
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+    depends_on:
+      mysql-productos:
+        condition: service_healthy
+
+  inventario-service:
+    build:
+      context: ./ProyectoMicroservicios/Inventario
+      dockerfile: Dockerfile
+    container_name: inventario-service
+    restart: always
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-inventario:3306/inventario_db
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      PRODUCTO_SERVICE_URL: http://producto-service:8081/productos
+    depends_on:
+      mysql-inventario:
+        condition: service_healthy
+      producto-service:
+        condition: service_started
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    restart: always
+    ports:
+      - "9999:9999"
+    environment:
+      PORT: 9999
+      PRODUCTO_SERVICE_URL: http://producto-service:8081
+      INVENTARIO_SERVICE_URL: http://inventario-service:8082
+    depends_on:
+      - producto-service
+      - inventario-service
+
+volumes:
+  mysql_productos_data:
+  mysql_inventario_data:
