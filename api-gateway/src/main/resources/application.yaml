@@ -20,16 +20,10 @@ spring:
               predicates:
                 - Path=/inventario/**
 
-logging:
-  level:
-    org.springframework.cloud.gateway: DEBUG
 
-management:
-  endpoints:
-    web:
-      exposure:
-        include: "*"
-
-  endpoint:
-    health:
-      show-details: always
+            - id: gateway-test-route
+              uri: https://httpbin.org
+              predicates:
+                - Path=/gateway/test/**
+              filters:
+                - RedirectTo=302, https://httpbin.org/json
