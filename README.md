@@ -1,298 +1,198 @@
-# Entrega EP3 - Microservicios Productos, Inventario y API Gateway
+# Proyecto Microservicios - Productos e Inventario
 
-## Descripción del Proyecto
+## Descripcion
 
-Este proyecto corresponde al desarrollo de una arquitectura basada en microservicios utilizando Spring Boot. La aplicación permite gestionar productos e inventario mediante servicios independientes conectados a bases de datos relacionales y comunicación REST entre microservicios.
+Arquitectura de microservicios desarrollada con Spring Boot para administrar productos e inventario. El sistema usa dos microservicios independientes, bases de datos MySQL separadas, comunicacion REST mediante OpenFeign y un API Gateway como punto unico de entrada.
 
-La solución incorpora un API Gateway como punto único de entrada para centralizar el acceso a los servicios, además de documentación mediante Swagger/OpenAPI y despliegue mediante Docker Compose.
-
----
+La entrega refuerza los puntos solicitados en la pauta EFT: patron CSR, JPA, DTOs, Bean Validation, `ResponseEntity`, manejo global de errores, logs con SLF4J, Swagger/OpenAPI, configuracion YAML, Docker Compose y pruebas unitarias con JUnit + Mockito.
 
 ## Integrantes
 
-* Martín Troncoso
-* Jürgen Bormuth
-* Maximiliano Díaz
-* Maximiliano Cifuentes
+- Martin Troncoso
+- Jurgen Bormuth
+- Maximiliano Diaz
+- Maximiliano Cifuentes
 
----
+## Servicios
 
-## Arquitectura del Sistema
+| Servicio | Puerto | Responsabilidad |
+| --- | ---: | --- |
+| API Gateway | 9999 | Entrada centralizada y rutas hacia microservicios |
+| Productos | 8081 | CRUD de productos y reglas de negocio del catalogo |
+| Inventario | 8082 | CRUD de inventario y validacion remota de productos |
+| MySQL Productos | 3308 | Base `productos_db` |
+| MySQL Inventario | 3309 | Base `inventario_db` |
 
-El sistema está compuesto por:
+## Rutas del Gateway
 
-* Microservicio Productos
-* Microservicio Inventario
-* API Gateway
-* Base de datos MySQL para Productos
-* Base de datos MySQL para Inventario
+| Ruta | Destino |
+| --- | --- |
+| `http://localhost:9999/productos/**` | `http://localhost:8081/productos/**` |
+| `http://localhost:9999/inventario/**` | `http://localhost:8082/inventario/**` |
 
-### Flujo de comunicación
-
-Cliente → API Gateway → Microservicios → Bases de Datos
-
-El API Gateway centraliza todas las solicitudes y las redirige al microservicio correspondiente.
-
----
-
-## Microservicios Desarrollados
+## Endpoints
 
 ### Productos
 
-Microservicio encargado de administrar la información de productos disponibles en el sistema.
+| Metodo | Endpoint | Descripcion |
+| --- | --- | --- |
+| GET | `/productos` | Lista productos |
+| GET | `/productos/{id}` | Busca producto por ID |
+| POST | `/productos` | Crea producto |
+| PUT | `/productos/{id}` | Actualiza producto |
+| DELETE | `/productos/{id}` | Elimina producto |
 
-#### Funciones
-
-* Crear productos
-* Listar productos
-* Buscar productos por ID
-* Actualizar productos
-* Eliminar productos
-
-#### Endpoint Base
-
-Interno:
-http://localhost:8081/productos
-
-Vía Gateway:
-http://localhost:9999/productos
-
-#### Estructura de ejemplo
+Ejemplo:
 
 ```json
 {
-  "nombre": "",
-  "descripcion": "",
-  "precio": 0.0,
+  "nombre": "Notebook Lenovo",
+  "descripcion": "Notebook para oficina",
+  "precio": 599990,
   "stock": 15,
-  "categoria": "",
-  "proveedor": ""
+  "categoria": "Computacion",
+  "proveedor": "Lenovo Chile"
 }
 ```
 
----
+Regla de negocio: el precio minimo permitido es `100`.
 
 ### Inventario
 
-Microservicio encargado de gestionar el stock y disponibilidad de productos.
+| Metodo | Endpoint | Descripcion |
+| --- | --- | --- |
+| GET | `/inventario` | Lista inventario |
+| GET | `/inventario/{id}` | Busca inventario por ID |
+| GET | `/inventario/producto/{productoId}` | Busca inventario por producto |
+| GET | `/inventario/stock-bajo` | Lista registros con stock actual menor o igual al minimo |
+| POST | `/inventario` | Crea inventario asociado a un producto existente |
+| PUT | `/inventario/{id}` | Actualiza inventario |
+| DELETE | `/inventario/{id}` | Elimina solo el registro de inventario |
 
-#### Funciones
-
-* Registrar inventario
-* Consultar stock
-* Actualizar cantidades
-* Eliminar registros de inventario
-* Comunicación con microservicio Productos
-
-#### Endpoint Base
-
-Interno:
-http://localhost:8082/inventario
-
-Vía Gateway:
-http://localhost:9999/inventario
-
-#### Estructura de ejemplo
+Ejemplo:
 
 ```json
 {
-  "id": 1,
   "productoId": 1,
-  "stockActual": 10,
-  "stockMinimo": 5,
-  "ubicacion": "Bodega A"
+  "stockActual": 15,
+  "stockMinimo": 3,
+  "ubicacion": "Bodega Central"
 }
 ```
 
----
+Reglas de negocio:
 
-## Comunicación entre Microservicios
+- El producto debe existir en el microservicio Productos antes de crear inventario.
+- Un producto no puede tener dos registros de inventario.
+- Borrar inventario no borra el producto, porque pertenecen a responsabilidades distintas.
 
-El microservicio Inventario consume información remota del microservicio Productos mediante endpoints REST.
+## Swagger / OpenAPI
 
-Esta comunicación permite validar la existencia de productos y mantener sincronizada la información relacionada con el inventario.
+- Productos Swagger UI: `http://localhost:8081/swagger-ui/index.html`
+- Inventario Swagger UI: `http://localhost:8082/swagger-ui/index.html`
+- Productos OpenAPI JSON: `http://localhost:8081/v3/api-docs`
+- Inventario OpenAPI JSON: `http://localhost:8082/v3/api-docs`
 
----
+## Configuracion
 
-## API Gateway
+Los microservicios usan `application.yml`:
 
-El API Gateway funciona como punto único de acceso al sistema.
+- `ProyectoMicroservicios/Producto/src/main/resources/application.yml`
+- `ProyectoMicroservicios/Inventario/src/main/resources/application.yml`
+- `api-gateway/src/main/resources/application.yaml`
 
-### Puerto
+Variables utiles:
 
-```text
-http://localhost:9999
-```
+| Variable | Uso |
+| --- | --- |
+| `PORT` | Puerto del servicio |
+| `SPRING_DATASOURCE_URL` | URL JDBC |
+| `SPRING_DATASOURCE_USERNAME` | Usuario de base de datos |
+| `SPRING_DATASOURCE_PASSWORD` | Password de base de datos |
+| `PRODUCTO_SERVICE_URL` | URL usada por Inventario o Gateway para Productos |
+| `INVENTARIO_SERVICE_URL` | URL usada por Gateway para Inventario |
 
-### Rutas principales
+## Ejecucion local
 
-Productos:
-
-```text
-http://localhost:9999/productos
-```
-
-Inventario:
-
-```text
-http://localhost:9999/inventario
-```
-
-Todas las pruebas funcionales pueden realizarse a través del Gateway sin necesidad de acceder directamente a los microservicios.
-
----
-
-## Endpoints Implementados
-
-### Productos
-
-| Método | Endpoint        |
-| ------ | --------------- |
-| GET    | /productos      |
-| GET    | /productos/{id} |
-| POST   | /productos      |
-| PUT    | /productos/{id} |
-| DELETE | /productos/{id} |
-
-### Inventario
-
-| Método | Endpoint         |
-| ------ | ---------------- |
-| GET    | /inventario      |
-| GET    | /inventario/{id} |
-| POST   | /inventario      |
-| PUT    | /inventario/{id} |
-| DELETE | /inventario/{id} |
-
----
-
-## Tecnologías Utilizadas
-
-* Java
-* Spring Boot
-* Spring Cloud Gateway
-* Maven
-* MySQL
-* JPA / Hibernate
-* Swagger / OpenAPI
-* Docker
-* Docker Compose
-* Postman
-* GitHub
-
----
-
-## Ejecución del Proyecto
-
-### Bases de Datos
-
-Crear las siguientes bases de datos:
+Crear bases de datos si se ejecuta sin Docker:
 
 ```sql
 CREATE DATABASE productos_db;
 CREATE DATABASE inventario_db;
 ```
 
-### Ejecución Manual
+Levantar en este orden:
 
-1. Levantar el microservicio Productos (Puerto 8081).
-2. Levantar el microservicio Inventario (Puerto 8082).
-3. Levantar el API Gateway (Puerto 9999).
+```bash
+cd ProyectoMicroservicios/Producto
+mvnw.cmd spring-boot:run
+```
 
-### Ejecución con Docker
+```bash
+cd ProyectoMicroservicios/Inventario
+mvnw.cmd spring-boot:run
+```
 
-Desde la carpeta raíz del proyecto:
+```bash
+cd api-gateway
+mvnw.cmd spring-boot:run
+```
+
+## Ejecucion con Docker
+
+Desde la raiz del repositorio:
 
 ```bash
 docker compose up --build
 ```
 
-Servicios publicados:
-
-| Servicio         | Puerto |
-| ---------------- | ------ |
-| API Gateway      | 9999   |
-| Productos        | 8081   |
-| Inventario       | 8082   |
-| MySQL Productos  | 3308   |
-| MySQL Inventario | 3309   |
-
-Para detener todos los contenedores:
+Detener:
 
 ```bash
 docker compose down
 ```
 
----
+## Pruebas unitarias
 
-## Swagger / OpenAPI
+Ejecutar por microservicio:
 
-### Swagger UI
-
-Productos:
-
-```text
-http://localhost:8081/swagger-ui/index.html
+```bash
+cd ProyectoMicroservicios/Producto
+mvnw.cmd test
 ```
 
-Inventario:
-
-```text
-http://localhost:8082/swagger-ui/index.html
+```bash
+cd ProyectoMicroservicios/Inventario
+mvnw.cmd test
 ```
 
-### OpenAPI JSON
-
-Productos:
-
-```text
-http://localhost:8081/v3/api-docs
+```bash
+cd api-gateway
+mvnw.cmd test
 ```
 
-Inventario:
+Si Windows usa Java 8 por defecto, configurar un JDK 17 o superior antes de ejecutar:
 
-```text
-http://localhost:8082/v3/api-docs
+```powershell
+$env:JAVA_HOME='C:\Program Files\JetBrains\IntelliJ IDEA 2026.1\jbr'
+$env:Path="$env:JAVA_HOME\bin;$env:Path"
 ```
 
----
+## Flujo recomendado para Postman
 
-## Consideraciones Importantes
+1. `POST http://localhost:9999/productos`
+2. `GET http://localhost:9999/productos`
+3. `POST http://localhost:9999/inventario` usando el `id` del producto creado.
+4. `GET http://localhost:9999/inventario/producto/{productoId}`
+5. `GET http://localhost:9999/inventario/stock-bajo`
+6. `PUT http://localhost:9999/productos/{id}` o `PUT http://localhost:9999/inventario/{id}`
+7. `DELETE http://localhost:9999/inventario/{id}`
 
-### Eliminación de Registros
+## Puntos para defender
 
-Se recomienda eliminar registros desde el microservicio Inventario.
-
-Al eliminar desde Inventario, el sistema gestiona correctamente la eliminación relacionada en Productos.
-
-Si se elimina primero desde Productos, será necesario realizar la eliminación correspondiente en Inventario de forma manual.
-
-### AUTO_INCREMENT
-
-Después de eliminar registros, si se desea reutilizar el identificador eliminado para mantener una secuencia ordenada, se puede ejecutar:
-
-```sql
-ALTER TABLE productos AUTO_INCREMENT = ID_ELIMINADA;
-ALTER TABLE inventario AUTO_INCREMENT = ID_ELIMINADA;
-```
-
-Este procedimiento es opcional y se utiliza únicamente con fines de organización visual de los registros.
-
-### Aporte de los Integrantes
-Martín Troncoso
-- Desarrollo de microservicios.
-- Configuración de API Gateway.
-- Integración Docker y Docker Compose.
-- Documentación y pruebas.
-
-Jürgen Bormuth
-- Desarrollo de funcionalidades de negocio.
-- Implementación de endpoints REST.
-
-Maximiliano Díaz
-- Apoyo en desarrollo y validación de funcionalidades.
-- Pruebas y revisión de integración.
-
-Maximiliano Cifuentes
-- Apoyo en documentación, pruebas y validación del sistema.
-- Verificación de funcionamiento general.
+- Controller: recibe requests, valida DTOs con `@Valid` y responde con `ResponseEntity`.
+- Service: concentra reglas de negocio, logs y comunicacion remota.
+- Repository: usa `JpaRepository` y una consulta JPQL para stock bajo.
+- Model: entidades JPA con restricciones de columnas.
+- Exception: `@ControllerAdvice` centraliza respuestas de error.
+- Tests: JUnit + Mockito prueban reglas clave sin levantar base de datos.
