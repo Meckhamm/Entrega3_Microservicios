@@ -1,66 +1,74 @@
 package com.inventario.clduoc.Inventario.exception;
 
-import feign.FeignException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ControllerAdvice;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.servlet.NoHandlerFoundException;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     @ExceptionHandler(ResourceNotFoundException.class)
-    @ResponseStatus(HttpStatus.NOT_FOUND)
-    public @ResponseBody Map<String, Object> manejarNotFound(ResourceNotFoundException ex) {
-
-        Map<String, Object> error = new HashMap<>();
-
-        error.put("codigo", 404);
-        error.put("mensaje", ex.getMessage());
-        error.put("fecha", LocalDateTime.now());
-
-        return error;
+    public ResponseEntity<Map<String, Object>> manejarNotFound(ResourceNotFoundException ex) {
+        log.warn("Recurso no encontrado: {}", ex.getMessage());
+        return construirRespuesta(HttpStatus.NOT_FOUND, ex.getMessage(), null);
     }
 
-    @ExceptionHandler(FeignException.NotFound.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public @ResponseBody Map<String, Object> manejarProductoNoExiste(FeignException.NotFound ex) {
+    @ExceptionHandler(BusinessRuleException.class)
+    public ResponseEntity<Map<String, Object>> manejarReglaNegocio(BusinessRuleException ex) {
+        log.warn("Regla de negocio rechazada: {}", ex.getMessage());
+        return construirRespuesta(HttpStatus.CONFLICT, ex.getMessage(), null);
+    }
 
-        Map<String, Object> error = new HashMap<>();
+    @ExceptionHandler(RemoteServiceException.class)
+    public ResponseEntity<Map<String, Object>> manejarServicioRemoto(RemoteServiceException ex) {
+        log.warn("Error en comunicacion remota: {}", ex.getMessage());
+        return construirRespuesta(HttpStatus.BAD_GATEWAY, ex.getMessage(), null);
+    }
 
-        error.put("codigo", 400);
-        error.put("mensaje", "El producto no existe, primero debes crear uno");
-        error.put("fecha", LocalDateTime.now());
-
-        return error;
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, Object>> manejarValidacion(MethodArgumentNotValidException ex) {
+        Map<String, String> errores = ex.getBindingResult().getFieldErrors().stream()
+                .collect(Collectors.toMap(
+                        error -> error.getField(),
+                        error -> error.getDefaultMessage() == null ? "Valor invalido" : error.getDefaultMessage(),
+                        (actual, reemplazo) -> actual,
+                        LinkedHashMap::new
+                ));
+        log.warn("Validacion fallida en Inventario: {}", errores);
+        return construirRespuesta(HttpStatus.BAD_REQUEST, "Datos de entrada invalidos", errores);
     }
 
     @ExceptionHandler(NoHandlerFoundException.class)
-    @ResponseStatus(HttpStatus.NOT_FOUND)
-    public @ResponseBody Map<String, Object> manejarRutaIncorrecta(NoHandlerFoundException ex) {
-
-        Map<String, Object> error = new HashMap<>();
-
-        error.put("codigo", 404);
-        error.put("mensaje", "La ruta ingresada no existe");
-        error.put("fecha", LocalDateTime.now());
-
-        return error;
+    public ResponseEntity<Map<String, Object>> manejarRutaIncorrecta(NoHandlerFoundException ex) {
+        return construirRespuesta(HttpStatus.NOT_FOUND, "La ruta ingresada no existe", null);
     }
 
     @ExceptionHandler(Exception.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public @ResponseBody Map<String, Object> manejarGeneral(Exception ex) {
+    public ResponseEntity<Map<String, Object>> manejarGeneral(Exception ex) {
+        log.error("Error no controlado en Inventario", ex);
+        return construirRespuesta(HttpStatus.INTERNAL_SERVER_ERROR, "Error interno del servicio de inventario", null);
+    }
 
-        Map<String, Object> error = new HashMap<>();
-
-        error.put("codigo", 400);
-        error.put("mensaje", "Debes especificar una ID a actualizar");
+    private ResponseEntity<Map<String, Object>> construirRespuesta(HttpStatus status, String mensaje, Object detalle) {
+        Map<String, Object> error = new LinkedHashMap<>();
+        error.put("codigo", status.value());
+        error.put("mensaje", mensaje);
+        if (detalle != null) {
+            error.put("detalle", detalle);
+        }
         error.put("fecha", LocalDateTime.now());
-
-        return error;
+        return ResponseEntity.status(status).body(error);
     }
 }

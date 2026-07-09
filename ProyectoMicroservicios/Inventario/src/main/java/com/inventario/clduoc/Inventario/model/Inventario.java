@@ -17,13 +17,17 @@ public class Inventario {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false, unique = true)
     private Long productoId;
 
     @PositiveOrZero
+    @Column(nullable = false)
     private Integer stockActual;
 
     @PositiveOrZero
+    @Column(nullable = false)
     private Integer stockMinimo;
 
+    @Column(nullable = false, length = 120)
     private String ubicacion;
 }
