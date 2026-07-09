@@ -1,5 +1,6 @@
 package com.inventario.clduoc.Inventario.model;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.*;
@@ -19,9 +20,17 @@ public class Inventario {
 
     private Long productoId;
 
+    @Schema(
+            description = "Cantidad actual disponible del producto en inventario",
+            example = "25"
+    )
     @PositiveOrZero
     private Integer stockActual;
 
+    @Schema(
+            description = "Cantidad mínima permitida antes de considerar el producto con stock bajo",
+            example = "5"
+    )
     @PositiveOrZero
     private Integer stockMinimo;
 
