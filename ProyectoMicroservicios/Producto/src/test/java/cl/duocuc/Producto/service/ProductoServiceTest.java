@@ -11,10 +11,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -56,6 +59,16 @@ class ProductoServiceTest {
         when(repository.findById(99L)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () -> service.actualizar(99L, dtoValido()));
+    }
+
+    @Test
+    void listarRetornaListaVaciaCuandoNoHayProductos() {
+        when(repository.findAll()).thenReturn(Collections.emptyList());
+
+        List<Producto> resultado = service.listar();
+
+        assertTrue(resultado.isEmpty());
+        verify(repository).findAll();
     }
 
     private ProductoDTO dtoValido() {
