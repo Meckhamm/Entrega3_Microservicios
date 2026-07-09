@@ -18,17 +18,23 @@ public class Producto {
     private Long id;
 
     @NotBlank
+    @Column(nullable = false, length = 100)
     private String nombre;
 
+    @Column(length = 255)
     private String descripcion;
 
     @Positive
+    @Column(nullable = false)
     private Double precio;
 
     @PositiveOrZero
+    @Column(nullable = false)
     private Integer stock;
 
+    @Column(nullable = false, length = 80)
     private String categoria;
 
+    @Column(nullable = false, length = 120)
     private String proveedor;
 }
